@@ -4,6 +4,7 @@ defmodule TexasHoldem.MixProject do
   def project do
     [
       app: :texas_holdem,
+      dialyzer: dialyzer(),
       version: "0.1.0",
       elixir: "~> 1.12",
       elixirc_paths: elixirc_paths(Mix.env()),
@@ -33,6 +34,8 @@ defmodule TexasHoldem.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
+      {:credo, "~> 1.6.1", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.1.0", only: [:dev, :test], runtime: false},
       {:phoenix, "~> 1.6.6"},
       {:phoenix_ecto, "~> 4.4"},
       {:ecto_sql, "~> 3.6"},
@@ -52,6 +55,14 @@ defmodule TexasHoldem.MixProject do
     ]
   end
 
+  defp dialyzer do
+    [
+      ignore_warnings: ".dialyzer_ignore.exs",
+      list_unused_filters: false,
+      plt_add_apps: [:ex_unit, :mix]
+    ]
+  end
+
   # Aliases are shortcuts or tasks specific to the current project.
   # For example, to install project dependencies and perform other setup tasks, run:
   #
@@ -60,6 +71,8 @@ defmodule TexasHoldem.MixProject do
   # See the documentation for `Mix` for more info on aliases.
   defp aliases do
     [
+      lint: ["credo --strict", "format --check-formatted"],
+      security_check: ["sobelow --private --skip -i Config.HTTPS --exit"],
       setup: ["deps.get", "ecto.setup"],
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
