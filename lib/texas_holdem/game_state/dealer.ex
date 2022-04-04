@@ -1,4 +1,4 @@
-defmodule TexasHoldem.Dealer do
+defmodule TexasHoldem.GameState.Dealer do
   @moduledoc "GenServer responsible for dealing out cards"
 
   @clubs ~w[cA cK cQ cJ c10 c9 c8 c7 c6 c5 c4 c3 c2]a
