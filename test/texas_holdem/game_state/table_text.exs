@@ -70,6 +70,93 @@ defmodule TexasHoldem.GameState.TableTest do
     end
   end
 
+  describe "active_players/1" do
+    test "returns an ordered list of active players in the hand" do
+      player1 = %PlayerState{
+        name: "Doyle Brunson",
+        stack: 100_000,
+        in_hand: true,
+        sitting_out: false
+      }
+
+      player2 = %PlayerState{
+        name: "Phil Ivey",
+        stack: 100_000,
+        in_hand: false,
+        sitting_out: false
+      }
+
+      player3 = %PlayerState{
+        name: "Phil Hellmuth",
+        stack: 100_000,
+        in_hand: false,
+        sitting_out: true
+      }
+
+      player4 = %PlayerState{name: "Tony G", stack: 100_000, in_hand: true, sitting_out: false}
+
+      player5 = %PlayerState{
+        name: "Antonio Esfandiari",
+        stack: 100_000,
+        in_hand: true,
+        sitting_out: false
+      }
+
+      player6 = %PlayerState{
+        name: "Ike Haxton",
+        stack: 100_000,
+        in_hand: false,
+        sitting_out: false
+      }
+
+      player7 = %PlayerState{
+        name: "Daniel Negreanu",
+        stack: 100_000,
+        in_hand: true,
+        sitting_out: false
+      }
+
+      max_players = 9
+
+      seat_order =
+        Enum.reduce(1..max_players, %{}, fn seat_number, acc ->
+          seat = String.to_atom("seat#{seat_number}")
+
+          next =
+            if seat_number == max_players do
+              :seat1
+            else
+              String.to_atom("seat#{seat_number + 1}")
+            end
+
+          Map.put(acc, seat, next)
+        end)
+
+      state = %{
+        dealer: nil,
+        pot: 0,
+        bb: 0,
+        ante: 0,
+        button: :seat4,
+        max_players: max_players,
+        seats: %{
+          seat1: player1,
+          seat2: player2,
+          seat3: player3,
+          seat4: player4,
+          seat5: player5,
+          seat6: player6,
+          seat7: player7,
+          seat8: nil,
+          seat9: nil
+        },
+        seat_order: seat_order
+      }
+
+      assert Table.active_players(state) == [:seat4, :seat5, :seat7, :seat1]
+    end
+  end
+
   describe "order_seats/2" do
     setup do
       max_players = 9

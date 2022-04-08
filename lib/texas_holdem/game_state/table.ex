@@ -110,10 +110,16 @@ defmodule TexasHoldem.GameState.Table do
     {:reply, seat, state}
   end
 
+  @doc """
+  Returns an ordered list of seats that have active players
+  currently in the hand.
+  """
+  @spec active_players(table_state()) :: [seat()]
   def active_players(state) do
     state
     |> Map.get(:seats)
-    |> Stream.reject(fn {_k, v} -> is_nil(v) or v.in_hand == false end)
+    |> Enum.reject(fn {_k, v} -> is_nil(v) or v.in_hand == false end)
+    |> order_seats(state)
   end
 
   @doc """
