@@ -5,13 +5,16 @@ defmodule TexasHoldem.GameState.Table do
 
   use GenServer
 
-  alias TexasHoldem.GameState.PlayerState
+  alias TexasHoldem.GameState.{Dealer, PlayerState}
+
+  @type seat :: :seat1 | :seat2 | :seat3 | :seat4 | :seat5 | :seat6 | :seat7 | :seat8 | :seat9
 
   @type table_state :: %{
+          required(:dealer) => pid(),
           required(:pot) => integer(),
           required(:bb) => integer(),
           required(:ante) => integer(),
-          required(:button) => integer(),
+          required(:button) => seat(),
           required(:max_players) => 1..9,
           required(:seats) => %{
             required(:seat1) => PlayerState.t() | nil,
@@ -26,7 +29,6 @@ defmodule TexasHoldem.GameState.Table do
           }
         }
 
-  @type seat :: :seat1 | :seat2 | :seat3 | :seat4 | :seat5 | :seat6 | :seat7 | :seat8 | :seat9
   #
   # section Client API
   #
@@ -57,12 +59,30 @@ defmodule TexasHoldem.GameState.Table do
   #
 
   def init(_) do
+    {:ok, dealer} = Dealer.start_link()
+    max_players = 9
+
+    seat_order =
+      Enum.reduce(1..max_players, %{}, fn seat_number, acc ->
+        seat = String.to_atom("seat#{seat_number}")
+
+        next =
+          if seat_number == max_players do
+            :seat1
+          else
+            String.to_atom("seat#{seat_number + 1}")
+          end
+
+        Map.put(acc, seat, next)
+      end)
+
     state = %{
+      dealer: dealer,
       pot: 0,
       bb: 0,
       ante: 0,
-      button: 1,
-      max_players: 9,
+      button: :seat1,
+      max_players: max_players,
       seats: %{
         seat1: nil,
         seat2: nil,
@@ -73,7 +93,8 @@ defmodule TexasHoldem.GameState.Table do
         seat7: nil,
         seat8: nil,
         seat9: nil
-      }
+      },
+      seat_order: seat_order
     }
 
     {:ok, state}
@@ -85,8 +106,45 @@ defmodule TexasHoldem.GameState.Table do
 
   def handle_call({:seat_player, player_state}, _from, state) do
     seat = random_open_seat(state)
-    state = update_in(state[:seats][seat], fn(_) -> player_state end)
+    state = update_in(state[:seats][seat], fn _ -> player_state end)
     {:reply, seat, state}
+  end
+
+  def active_players(state) do
+    state
+    |> Map.get(:seats)
+    |> Stream.reject(fn {_k, v} -> is_nil(v) or v.in_hand == false end)
+  end
+
+  @doc """
+  Takes a List of seats and orders them based on the position of
+  the dealer button.
+  """
+  @spec order_seats([seat()], table_state()) :: [seat()]
+  def order_seats(seats, state) do
+    button = state[:button]
+    order = state[:seat_order]
+    first = order[button]
+    do_button_ordering(button, order, first, seats, [])
+  end
+
+  @doc """
+  Recursive function for ordering seats starting to the left of the button.
+  """
+  @spec do_button_ordering(seat(), %{seat() => seat()}, seat(), [seat()], [seat()]) :: [seat()]
+  def do_button_ordering(button, order, cursor, unordered_seats, ordered_seats) do
+    ordered_seats =
+      if Enum.member?(unordered_seats, cursor) do
+        ordered_seats ++ [cursor]
+      else
+        ordered_seats
+      end
+
+    if cursor == button do
+      ordered_seats
+    else
+      do_button_ordering(button, order, order[cursor], unordered_seats, ordered_seats)
+    end
   end
 
   @doc """
@@ -106,7 +164,7 @@ defmodule TexasHoldem.GameState.Table do
   @spec available_seats(table_state()) :: [seat()]
   def available_seats(state) do
     state
-    |> Map.get(:seats, %{})
+    |> Map.get(:seats)
     |> Stream.filter(fn {_k, v} -> is_nil(v) end)
     |> Stream.filter(fn {k, _v} -> valid_seat?(k, state) end)
     |> Enum.map(fn {k, _v} -> k end)

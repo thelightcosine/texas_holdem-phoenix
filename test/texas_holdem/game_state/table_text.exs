@@ -69,4 +69,57 @@ defmodule TexasHoldem.GameState.TableTest do
       assert player_state.stack == 100_000
     end
   end
+
+  describe "order_seats/2" do
+    setup do
+      max_players = 9
+
+      seat_order =
+        Enum.reduce(1..max_players, %{}, fn seat_number, acc ->
+          seat = String.to_atom("seat#{seat_number}")
+
+          next =
+            if seat_number == max_players do
+              :seat1
+            else
+              String.to_atom("seat#{seat_number + 1}")
+            end
+
+          Map.put(acc, seat, next)
+        end)
+
+      state = %{
+        dealer: nil,
+        pot: 0,
+        bb: 0,
+        ante: 0,
+        button: :seat3,
+        max_players: max_players,
+        seats: %{
+          seat1: nil,
+          seat2: nil,
+          seat3: nil,
+          seat4: nil,
+          seat5: nil,
+          seat6: nil,
+          seat7: nil,
+          seat8: nil,
+          seat9: nil
+        },
+        seat_order: seat_order
+      }
+
+      %{table_state: state}
+    end
+
+    test "orders the given set of seats based on the button", %{table_state: state} do
+      seats = [:seat1, :seat3, :seat5, :seat7, :seat8]
+      assert Table.order_seats(seats, state) == [:seat5, :seat7, :seat8, :seat1, :seat3]
+    end
+
+    test "works even if the button is not in the seats to be ordered", %{table_state: state} do
+      seats = [:seat1, :seat5, :seat7, :seat8]
+      assert Table.order_seats(seats, state) == [:seat5, :seat7, :seat8, :seat1]
+    end
+  end
 end
